@@ -9,7 +9,7 @@ if sys.platform in ('linux'):
 	lib = '-lGLEW -lGL'
 	exc = './a.out'
 
-CMD = 'g++{} -Wall -Wextra -Weffc++ -pedantic-errors{} -lSDL2 {}' \
+CMD = 'g++{} -Wall -Wextra -pedantic-errors{} -lSDL2 {}' \
 	' && {}'.format(
 		''.join(' ' + x for x in ld() if x.split('.')[-1] in ('cpp', 'cc')),
 		''.join(' ' + x for x in sys.argv[1:]),
