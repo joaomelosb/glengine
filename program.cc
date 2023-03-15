@@ -83,6 +83,18 @@ void Program::setUniform(char const *name, glm::mat4 const& mat) {
 
 }
 
+void Program::setUniform(char const *name, glm::vec3 const& vec) {
+
+	glUniform3fv(uloc(name), 1, glm::value_ptr(vec));
+
+}
+
+void Program::setUniform(char const *name, float const& v) {
+
+	glUniform1f(uloc(name), v);
+
+}
+
 GLint Program::getParam(GLenum param) {
 
 	GLint data;

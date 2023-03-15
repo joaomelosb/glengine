@@ -37,6 +37,21 @@ static void finish() {
 
 }
 
+static float dt() {
+
+	static Uint64 last;
+	Uint64 current = SDL_GetTicks64();
+
+	if (!last)
+		last = current;
+
+	float d = (current - last) / 1000.;
+	last = current;
+
+	return d;
+
+}
+
 int main() {
 
 	atexit(finish);
@@ -73,18 +88,58 @@ int main() {
 
 #define VBO *buffers
 #define EBO buffers[1]
+
 	GLuint VAO, buffers[2];
 
-	GLfloat vertex[] = {
-		-1, 1,
-		1, 1,
-		1, -1,
-		-1, -1
+#define CUBE(x) \
+	x, x + 1, x + 2, \
+	x, x + 2, x + 3
+
+	GLfloat vertex[][2][3] = {
+		// front
+        {{-1, 1, 1}, {0, 0, 1}},
+        {{1, 1, 1}, {0, 0, 1}},
+        {{1, -1, 1}, {0, 0, 1}},
+        {{-1, -1, 1}, {0, 0, 1}},
+
+        // top
+        {{-1, 1, -1}, {0, 1, 0}},
+        {{1, 1, -1}, {0, 1, 0}},
+        {{1, 1, 1}, {0, 1, 0}},
+        {{-1, 1, 1}, {0, 1, 0}},
+
+        // back
+        {{-1, 1, -1}, {0, 0, -1}},
+        {{1, 1, -1}, {0, 0, -1}},
+        {{1, -1, -1}, {0, 0, -1}},
+        {{-1, -1, -1}, {0, 0, -1}},
+
+        // bottom
+        {{-1, -1, -1}, {0, -1, 0}},
+        {{1, -1, -1}, {0, -1, 0}},
+        {{1, -1, 1}, {0, -1, 0}},
+        {{-1, -1, 1}, {0, -1, 0}},
+
+        // left
+        {{-1, 1, -1}, {-1, 0, 0}},
+        {{-1, 1, 1}, {-1, 0, 0}},
+        {{-1, -1, 1}, {-1, 0, 0}},
+        {{-1, -1, -1}, {-1, 0, 0}},
+
+        // right
+        {{1, 1, -1}, {1, 0, 0}},
+        {{1, 1, 1}, {1, 0, 0}},
+        {{1, -1, 1}, {1, 0, 0}},
+        {{1, -1, -1}, {1, 0, 0}}
 	};
 
 	GLubyte indices[] = {
-		0, 1, 2,
-		0, 2, 3
+		CUBE(0),
+		CUBE(4),
+		CUBE(8),
+		CUBE(12),
+		CUBE(16),
+		CUBE(20)
 	};
 
 	glGenVertexArrays(1, &VAO);
@@ -96,29 +151,66 @@ int main() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof vertex, vertex,
 		GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof *vertex, 0);
 	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof *vertex,
+		(void *)sizeof **vertex);
+	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof indices, indices,
 		GL_STATIC_DRAW);
 
-	for (;;) {
+	glEnable(GL_DEPTH_TEST);
+
+	int w, h;
+
+	SDL_GetWindowSize(window, &w, &h);
+
+	glm::vec3 eye {0, 0, 5};
+
+	for (float elapsed = 0, d; (d = dt(), true); elapsed += d) {
 
 		SDL_Event e;
 
 		while (SDL_PollEvent(&e))
-			if (e.type == SDL_QUIT)
+			switch (e.type) {
+			case SDL_QUIT:
 				return 0;
+			case SDL_WINDOWEVENT:
+				if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+					glViewport(0, 0, w = e.window.data1,
+						h = e.window.data2);
+					DEBUG("size change (%dx%d)", w, h)
+				}
+			}
 
 		glClearColor(.2, .3, .4, 1);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT |
+				GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 mat {1};
+		program.setUniform("p", glm::perspective(glm::pi<float>() / 4,
+			static_cast<float>(w) / h, 1.f, 100.f));
 
-		program.setUniform("mat", mat);
+		program.setUniform("v", glm::lookAt(eye, glm::vec3(0, 0, 0),
+			glm::vec3(0, 1, 0)));
 
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, 0);
+		program.setUniform("m", glm::rotate(glm::mat4(1), elapsed,
+			glm::vec3(1, 1, 0)));
+
+		program.setUniform("light_pos", glm::vec3(0, 0, 10));
+
+		program.setUniform("light_color", glm::vec3(1));
+
+		program.setUniform("eye_pos", eye);
+
+		program.setUniform("obj_color", glm::vec3(.5));
+
+		program.setUniform("material.shineness", 32);
+
+		glDrawElements(GL_TRIANGLES, sizeof indices / sizeof *indices,
+			GL_UNSIGNED_BYTE, 0);
 
 		SDL_GL_SwapWindow(window);
 

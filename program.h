@@ -24,6 +24,10 @@ struct Program : GLObject {
 	// Handle uniforms
 	void setUniform(char const *, glm::mat4 const&);
 
+	void setUniform(char const *, glm::vec3 const&);
+
+	void setUniform(char const *, float const&);
+
 	GLint getParam(GLenum) override;
 
 	char *getInfoLog(GLint *length = nullptr) override;
